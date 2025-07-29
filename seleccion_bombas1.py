@@ -59,7 +59,7 @@ if datos_bomba is not None:
     Q_bomba = datos_bomba["Q"].values
     H_bomba = datos_bomba["H"].values
 
-    Q = np.linspace(min(Q_bomba)-0.2, max(Q_bomba)+0.2, 300)
+    Q = np.linspace(min(Q_bomba)+0.01, max(Q_bomba)+0.2, 300)
     Q_m3s = Q / 3600 
     v = 4 * Q_m3s / (np.pi * di**2)
     Re = rho * v * di / mu
@@ -106,8 +106,20 @@ if datos_bomba is not None:
         q_operacion, h_operacion = None, None
         interseccion = False
 
+    # - - - RESULTADOS - - -
+    # -> Cálculo de Re:
+    Re = (4 * rho * q_operacion) / (np.pi * di * mu)
+    
+    # -> Cálculo de f:
+    def sistec3(f):
+        return [-1 / np.sqrt(f[0]) - 2 * np.log10((rugosidad / di) / 3.7 + 2.51 / (Re * np.sqrt(f[0])))]
+
+    f = float(fsolve(sistec3, [0.01]))
+
+
     # - - - PARTE visual - - -
     col1, col2 = st.columns([1.2, 1.8])
+
 
     with col2:
         fig, ax = plt.subplots()
@@ -133,10 +145,38 @@ if datos_bomba is not None:
             plt.figure(figsize=(8.5, 11))
             plt.axis('off')
             if q_operacion is not None and h_operacion is not None:
-                texto = f"RESULTADOS\n\nCaudal de operación: {q_operacion:.2f} m³/h\nAltura total: {h_operacion:.2f} m"
+                texto = (
+                    "RESULTADOS\n\n"
+                    f"Caudal de operación: {q_operacion:.2f} m³/h\n"
+                    f"Altura total: {h_operacion:.2f} m\n"
+                    f"Reynolds: {Re:.2f} m\n"
+                    f"Factor de fricción (f): {f:.4f}\n\n"
+                    "VALORES INGRESADOS\n"
+                    f"• Diámetro interno: {di:.3f} m\n"
+                    f"• ΔZ: {H_geo:.2f} m\n"
+                    f"• ΔP: {delta_p:.0f} Pa\n"
+                    f"• Longitud de cañería: {L:.2f} m\n"
+                    f"• Suma de K: {sum_K:.2f}\n"
+                    f"• Rugosidad absoluta: {rugosidad:.5f} m\n"
+                    f"• Pérdida permanente del caudalímetro: {deltaP_perm:.0f} Pa\n"
+                    f"• Densidad: {rho:.1f} kg/m³\n"
+                    f"• Viscosidad dinámica: {mu:.4f} Pa·s"
+                )
             else:
-                texto = "RESULTADOS\n\nNo se encontró un punto de operación válido entre la bomba y el sistema."
-            plt.text(0.1, 0.9, texto, fontsize=12)
+                texto = (
+                    "RESULTADOS\n\nNo se encontró un punto de operación válido entre la bomba y el sistema.\n\n"
+                    "VALORES INGRESADOS\n"
+                    f"• Diámetro interno: {di:.3f} m\n"
+                    f"• ΔZ: {H_geo:.2f} m\n"
+                    f"• ΔP: {delta_p:.0f} Pa\n"
+                    f"• Longitud de cañería: {L:.2f} m\n"
+                    f"• Suma de K: {sum_K:.2f}\n"
+                    f"• Rugosidad absoluta: {rugosidad:.5f} m\n"
+                    f"• Pérdida permanente del caudalímetro: {deltaP_perm:.0f} Pa\n"
+                    f"• Densidad: {rho:.1f} kg/m³\n"
+                    f"• Viscosidad dinámica: {mu:.4f} Pa·s"
+                )
+            plt.text(0.1, 0.9, texto, fontsize=12, va='top')
             pdf.savefig()
         pdf_data = buffer.getvalue()
         st.download_button("📥 Descargar informe PDF", data=pdf_data, file_name="informe_bomba.pdf", mime="application/pdf")
